@@ -15,8 +15,17 @@ __all__ = ['workspace']
 
 class workspace(object):
 
-    """Print the workspace of a Ipython notebook. Import the workspace class
-    and run workspace()
+    """Print the workspace of an Ipython notebook.
+
+    # Define a workspace :
+    from wksp import workspace
+    wk = workspace()
+
+    # In a new cell, run the ligne above to have a detached workspace :
+    wk.detached()
+
+    # Finally, close the workspace :
+    wk.close()
     """
 
     def __init__(self):
@@ -27,6 +36,7 @@ class workspace(object):
         self._namespace = NamespaceMagics()
         self._namespace.shell = ipython.kernel.shell
         self._getVarInfo()
+        self._defPyVar = ['int', 'float', 'tuple', 'ndarray', 'list', 'dict', 'matrix']
 
         # -------------- Workspace panel --------------
         self._tab, self._tablab = self._createTab(widgets.Box(), [])
@@ -34,16 +44,15 @@ class workspace(object):
         # -------------- Setting panel --------------
         # -> Sorting :
         self._Flt_type_w = widgets.Dropdown(description='Type')
-        self._Flt_sortBy_w = widgets.Dropdown(
-            description='Sort by', options=['Name', 'Type', 'Size'], margin=5)
-        self._Flt_order_w = widgets.ToggleButtons(
-            options=['Ascending', 'Descending'], margin=5)
+        self._Flt_sortBy_w = widgets.Dropdown(description='Sort by', options=['Name', 'Type', 'Size'], margin=5)
+        self._Flt_order_w = widgets.ToggleButtons(options=['Ascending', 'Descending'], margin=5)
+        self._Flt_zs_w = widgets.ToggleButtons(options=['True', 'False'], selected_label='True', description='Default system variables')
         self._Flt_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
         self._Flt_def_w = widgets.Button(description='Default', button_style='info', margin=20)
         Flt_button = widgets.HBox(children=[self._Flt_apply_w, self._Flt_def_w])
         self._Flt_apply_w.on_click(self._fill)
         self._Flt_cat_w = widgets.VBox(
-            children=[self._Flt_type_w, self._Flt_sortBy_w, self._Flt_order_w, Flt_button])
+            children=[self._Flt_type_w, self._Flt_sortBy_w, self._Flt_order_w, self._Flt_zs_w, Flt_button])
 
         # -> Load/save:
         self._LS_choice_w = widgets.ToggleButtons(options=['Save', 'Load'])
@@ -131,7 +140,7 @@ class workspace(object):
         # Get name :
         var = self._namespace.shell.user_ns
         # Get types :
-        return [type(var[n]).__name__ for n in name]
+        return [type(var[n]).__name__.lower() for n in name]
 
     def _getVarSizes(self, name):
         """Get variables sizes"""
@@ -141,7 +150,10 @@ class workspace(object):
             # Get shape :
             try:
                 try:
-                    valSize.append(str(v.shape))
+                    try:
+                        valSize.append(str(v.shape))
+                    except:
+                        valSize.append(str(np.size(v)))
                 except:
                     valSize.append(str(len(v)))
             except:
@@ -177,11 +189,14 @@ class workspace(object):
             order = False
         pdd = pdd.sort_values(sby, ascending=order)
         pdd = pdd.set_index([list(np.arange(pdd.shape[0]))])
-        fnames = list(pdd['Name'])
-        fsize = list(pdd['Size'])
-        ftypes = list(pdd['Type'])
+        # Hide empty size variables :
+        if eval(self._Flt_zs_w.get_state()['selected_label']):
+            emptyL = []
+            for num, v in enumerate(ftypes):
+                emptyL.extend([num for t in self._defPyVar if v == t])
+            pdd = pdd.iloc[emptyL]
 
-        return fnames, ftypes, fsize
+        return list(pdd['Name']), list(pdd['Type']), list(pdd['Size'])
 
     def _assignVar(self, *arg):
         """Assign new value to variable"""
@@ -242,7 +257,6 @@ class workspace(object):
         sleep(3)
         self._LS_txt.visible = False
 
-
     @staticmethod
     def _createTab(var, label):
         """Create each tab of the table"""
@@ -266,7 +280,7 @@ class workspace(object):
         self._popout._ipython_display_()
 
     def detached(self):
-        """Put the wokspace in a detached resizable window"""
+        """Put the workspace in a detached resizable window"""
         jav = """
         <script type="text/Javascript">
         $('div.inspector')
@@ -285,12 +299,12 @@ class workspace(object):
             .draggable().resizable();
         </script>
         """
-        return jav
+        return HTML(jav)
 
-    # def attached(self):
-    #     """Put the wokspace in a notebook cell"""
-    #     self.close()
-    #     self.__init__()
+    def attached(self):
+        """Put the wokspace in a notebook cell"""
+        self.close()
+        self.__init__()
 
     def close(self):
         """Close and remove hooks."""
