@@ -3,7 +3,7 @@ from IPython.core.magics.namespace import NamespaceMagics
 from IPython import get_ipython
 import numpy as np
 from types import ModuleType, FunctionType
-from IPython.display import HTML
+from IPython.display import HTML, Javascript
 from pandas import DataFrame
 import matplotlib.pyplot as plt
 from matplotlib.pylab import mpl
@@ -51,12 +51,19 @@ class workspace(object):
         self._Flt_sortBy_w = widgets.Dropdown(description='Sort by', options=['Name', 'Type', 'Size'])
         self._Flt_order_w = widgets.ToggleButtons(options=['Ascending', 'Descending'], margin=5)
         self._Flt_zs_w = widgets.ToggleButtons(options=['True', 'False'], selected_label='True', description='Default system variables')
+        # Choice of columns
+        self._Flt_nameChk = widgets.Checkbox(description='Name', value=True)
+        self._Flt_typeChk = widgets.Checkbox(description='Type', value=True)
+        self._Flt_valChk = widgets.Checkbox(description='Value', value=True)
+        self._Flt_sizeChk = widgets.Checkbox(description='Size', value=True)
+        Flt_columns = widgets.HBox(description='Columns', children=[self._Flt_nameChk, self._Flt_typeChk, self._Flt_valChk, self._Flt_sizeChk])
+        # Apply/default button :
         self._Flt_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
         self._Flt_def_w = widgets.Button(description='Default', button_style='info', margin=20)
         Flt_button = widgets.HBox(children=[self._Flt_apply_w, self._Flt_def_w])
         self._Flt_apply_w.on_click(self._fill)
         self._Flt_cat_w = widgets.VBox(
-            children=[self._Flt_type_w, self._Flt_sortBy_w, self._Flt_order_w, self._Flt_zs_w, Flt_button])
+            children=[self._Flt_type_w, self._Flt_sortBy_w, self._Flt_order_w, self._Flt_zs_w, Flt_columns, Flt_button])
 
         # -> Load/save:
         self._LS_choice_w = widgets.ToggleButtons(options=['Save', 'Load'])
@@ -82,7 +89,7 @@ class workspace(object):
         self._Op_cat_w = widgets.VBox(children=[self._Op_ass_w, self._Op_to_w, Op_button])
 
         # -> CAT :
-        self._subAccSt = widgets.Accordion()
+        self._subAccSt = widgets.Accordion(font_weight='bold')
         self._subAccSt.children = [self._Flt_cat_w, self._LS_cat_w, self._Op_cat_w]
         [self._subAccSt.set_title(k, n) for k, n in enumerate(['Sorting', 'Save/Load','Variables'])]
 
@@ -118,7 +125,7 @@ class workspace(object):
         _Vi_cat_w = widgets.VBox(children=[self._Vi_path_w, self._Vi_file_w, ViQuality, self._Vi_txt, ViApp_button])
 
         # -> CAT :
-        self._subAccVi = widgets.Accordion()
+        self._subAccVi = widgets.Accordion(font_weight='bold')
         self._subAccVi.children = [ViS_box, _Vi_cat_w]
         [self._subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
 
@@ -132,7 +139,7 @@ class workspace(object):
         self._Sh_cat_w = widgets.VBox(children=[self._Sh_ass_w, sh_button])
 
         # /////////////// FINAL TAB \\\\\\\\\\\\\\\\\
-        self._popout = widgets.Tab()
+        self._popout = widgets.Tab(font_weight='bold')
         self._popout.description = "Workspace"
         self._popout.button_text = self._popout.description
         self._popout.children = [self._tab, self._subAccSt, self._subAccVi, self._Sh_cat_w]
@@ -154,13 +161,27 @@ class workspace(object):
         self._Flt_type_w.options = ['All'] + _typet
 
         # Fill tab :
-        self._tablab.value = '<table class="table table-bordered table-striped"><tr><th>Name</th><th>Type</th><th>Value</th><th>Size</th</tr><tr><td>' + \
-        '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}<td>{3}</td>'.format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
-        '</td></tr></table>'
+        self._htmlTable(vName, vType, v, vSize)
+        # self._tablab.value = '<table class="table table-bordered table-striped"><tr><th>Name</th><th>Type</th><th>Value</th><th>Size</th</tr><tr><td>' + \
+        # '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}<td>{3}</td>'.format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+        # '</td></tr></table>'
 
-        st = self._popout.get_state()
-        st['selected_index'] = 0
-        st = self._popout.set_state(st)
+    def _htmlTable(self, vName, vType, v, vSize):
+        """"""
+        self._tablab.value = """
+        <table class="table table-bordered table-striped">
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Size</th>
+            </tr>
+            <tr>
+                <td>""" + \
+                '</td></tr><tr><td>'.join(["{0}</td><td>{1}</td><td>{2}<td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+                """</td>
+            </tr>
+        </table>"""
 
     # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
     # -> Sorting :
@@ -252,7 +273,7 @@ class workspace(object):
     def _plotVar(self, *arg):
         """Plot a variable"""
         varname = self._Vi_var_w.value
-        var = self._namespace.shell.user_ns[varname] # Get variable
+        var = self._namespace.shell.user_ns[varname]  # Get variable
         pltfcn = self._Vi_fcn_w.value  # Plotting function
         tit = self._Vi_tit_w.value  # title
         xlab = self._Vi_xlab_w.value  # xlabel
@@ -358,7 +379,6 @@ class workspace(object):
     def detached(self):
         """Put the workspace in a detached resizable window"""
         jav = """
-        <script type="text/Javascript">
         $('div.inspector')
             .detach()
             .prependTo($('body'))
@@ -371,11 +391,9 @@ class workspace(object):
                 position: 'fixed',
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 0.9
-            })
-            .draggable().resizable();
-        </script>
+            }).draggable().resizable();
         """
-        return HTML(jav)
+        return Javascript(jav)
 
     def attached(self):
         """Put the wokspace in a notebook cell"""
