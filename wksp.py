@@ -3,7 +3,7 @@ from IPython.core.magics.namespace import NamespaceMagics
 from IPython import get_ipython
 import numpy as np
 from types import ModuleType, FunctionType
-from IPython.display import HTML
+from IPython.display import HTML, Javascript
 from pandas import DataFrame
 import matplotlib.pyplot as plt
 from matplotlib.pylab import mpl
@@ -20,13 +20,14 @@ class workspace(object):
 
     # Define a workspace :
     from wksp import workspace
-    wk = workspace()
+    wk = workspace()    # define workspace
+    wk                  # display workspace
 
     # In a new cell, run the ligne above to have a detached workspace :
-    wk.detached()
+    wk.detached()       # detach workspace
 
     # Finally, close the workspace :
-    wk.close()
+    wk.close()          # close workspace
     """
 
     def __init__(self):
@@ -47,95 +48,104 @@ class workspace(object):
 
         # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
         # -> Sorting :
-        self._Flt_type_w = widgets.Dropdown(description='Type')
-        self._Flt_sortBy_w = widgets.Dropdown(description='Sort by', options=['Name', 'Type', 'Size'])
-        self._Flt_order_w = widgets.ToggleButtons(options=['Ascending', 'Descending'], margin=5)
-        self._Flt_zs_w = widgets.ToggleButtons(options=['True', 'False'], selected_label='True', description='Default system variables')
-        self._Flt_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._Flt_def_w = widgets.Button(description='Default', button_style='info', margin=20)
-        Flt_button = widgets.HBox(children=[self._Flt_apply_w, self._Flt_def_w])
-        self._Flt_apply_w.on_click(self._fill)
-        self._Flt_cat_w = widgets.VBox(
-            children=[self._Flt_type_w, self._Flt_sortBy_w, self._Flt_order_w, self._Flt_zs_w, Flt_button])
+        self._wFlt_type = widgets.Dropdown(description='Type')
+        self._wFlt_sortBy = widgets.Dropdown(description='Sort by', options=['Name', 'Type', 'Size'])
+        self._wFlt_order = widgets.ToggleButtons(options=['Ascending', 'Descending'], margin=5)
+        self._wFlt_defSys = widgets.ToggleButtons(options=['True', 'False'], selected_label='True', description='Default system variables')
+        # Choice of columns
+        self._wFlt_nameChk = widgets.Checkbox(description='Name', value=True)
+        self._wFlt_typeChk = widgets.Checkbox(description='Type', value=True)
+        self._wFlt_valChk = widgets.Checkbox(description='Value', value=True)
+        self._wFlt_sizeChk = widgets.Checkbox(description='Size', value=True)
+        Flt_columns = widgets.HBox(description='Columns', children=[self._wFlt_nameChk, self._wFlt_typeChk, self._wFlt_valChk, self._wFlt_sizeChk])
+        # Apply/default button :
+        _wFlt_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _wFlt_def = widgets.Button(description='Default', button_style='info', margin=20)
+        Flt_button = widgets.HBox(children=[_wFlt_apply, _wFlt_def])
+        _wFlt_apply.on_click(self._fill)
+        _wFlt_def.on_click(self._defaultSort)
+        _wFlt_cat = widgets.VBox(children=[self._wFlt_type, self._wFlt_sortBy, self._wFlt_order, self._wFlt_defSys, Flt_columns, Flt_button])
 
         # -> Load/save:
-        self._LS_choice_w = widgets.ToggleButtons(options=['Save', 'Load'])
-        self._LS_path_w = widgets.Text(description='Path', width=250, placeholder='Leave empty for current directory', margin=5)
-        self._LS_file_w = widgets.Text(description='File', width=250, placeholder='Ex : myfile', margin=5)
-        self._LS_var_w = widgets.Text(description='Variables', width=250, placeholder='Ex : "x, y, z"', margin=5)
-        self._LS_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._LS_clear_w = widgets.Button(description='Clear', button_style='info', margin=20)
-        self._LS_apply_w.on_click(self._loadsave)
-        LS_button = widgets.HBox(children=[self._LS_apply_w, self._LS_clear_w])
-        self._LS_txt = widgets.Latex(value='', color='#A1B56C', margin=5, font_weight='bold', visible=False)
-        self._LS_cat_w = widgets.VBox(
-            children=[self._LS_choice_w, self._LS_path_w, self._LS_file_w, self._LS_var_w, self._LS_txt, LS_button])
+        self._wLS_choice = widgets.ToggleButtons(options=['Save', 'Load'])
+        self._wLS_path = widgets.Text(description='Path', width=250, placeholder='Leave empty for current directory', margin=5)
+        self._wLS_file = widgets.Text(description='File', width=250, placeholder='Ex : myfile', margin=5)
+        self._wLS_var = widgets.Text(description='Variables', width=250, placeholder='Ex : "x, y, z"', margin=5)
+        _wLS_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _wLS_clear = widgets.Button(description='Clear', button_style='info', margin=20)
+        _wLS_apply.on_click(self._loadsave)
+        _wLS_clear.on_click(self._clearLS)
+        LS_button = widgets.HBox(children=[_wLS_apply, _wLS_clear])
+        self._wLS_txt = widgets.Latex(value='', color='#A1B56C', margin=5, font_weight='bold', visible=False)
+        _LS_cat = widgets.VBox(children=[self._wLS_choice, self._wLS_path, self._wLS_file, self._wLS_var, self._wLS_txt, LS_button])
 
         # -> Operation :
-        self._Op_ass_w = widgets.Text(description='Assign', width=300, placeholder='variable')
-        self._Op_to_w = widgets.Text(description='To', width=300, placeholder='var/expression')
-        self._Op_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._Op_clear_w = widgets.Button(description='Clear', button_style='info', margin=20)
-        Op_button = widgets.HBox(children=[self._Op_apply_w, self._Op_clear_w])
-        self._Op_apply_w.on_click(self._assignVar)
-        self._Op_clear_w.on_click(self._clearVar)
-        self._Op_cat_w = widgets.VBox(children=[self._Op_ass_w, self._Op_to_w, Op_button])
+        self._wOp_ass = widgets.Text(description='Assign', width=300, placeholder='variable')
+        self._wOp_to = widgets.Text(description='To', width=300, placeholder='var/expression')
+        _wOp_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _wOp_clear = widgets.Button(description='Clear', button_style='info', margin=20)
+        Op_button = widgets.HBox(children=[_wOp_apply, _wOp_clear])
+        _wOp_apply.on_click(self._assignVar)
+        _wOp_clear.on_click(self._clearVar)
+        _Op_cat_w = widgets.VBox(children=[self._wOp_ass, self._wOp_to, Op_button])
 
         # -> CAT :
-        self._subAccSt = widgets.Accordion()
-        self._subAccSt.children = [self._Flt_cat_w, self._LS_cat_w, self._Op_cat_w]
-        [self._subAccSt.set_title(k, n) for k, n in enumerate(['Sorting', 'Save/Load','Variables'])]
+        _subAccSt = widgets.Accordion(font_weight='bold')
+        _subAccSt.children = [_wFlt_cat, _LS_cat, _Op_cat_w]
+        [_subAccSt.set_title(k, n) for k, n in enumerate(['Sorting', 'Save/Load','Variables'])]
 
         # /////////////// VISUALIZATION \\\\\\\\\\\\\\\\\
         # -> Variable and function for plotting :
-        self._Vi_var_w = widgets.Text(description='Variables', width=250, placeholder='Ex : x')
-        self._Vi_fcn_w = widgets.Dropdown(description='Function', options=['plot', 'imshow'])
+        self._wVi_var = widgets.Text(description='Variables', width=250, placeholder='Ex : x')
+        self._wVi_fcn = widgets.Dropdown(description='Function', options=['plot', 'imshow'])
         # -> Plot settings :
-        self._Vi_tit_w = widgets.Text(description='Title', width=250, placeholder='Ex : My title')
-        self._Vi_xlab_w = widgets.Text(description='X label', width=250, placeholder='Ex : time')
-        self._Vi_ylab_w = widgets.Text(description='Y label', width=250, placeholder='Ex : Amplitude')
-        self._Vi_cmap_w = widgets.Text(description='Colormap', width=250, placeholder='Ex : viridis')
-        self._Vi_kwarg_w = widgets.Text(description='kwargs', width=250, placeholder='Ex : {}')
-        self._ViS_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._ViS_clear_w = widgets.Button(description='Clear', button_style='info', margin=20)
-        self._ViS_apply_w.on_click(self._plotVar)
-        ViS_button = widgets.HBox(children=[self._ViS_apply_w, self._ViS_clear_w])
+        self._wVi_tit = widgets.Text(description='Title', width=250, placeholder='Ex : My title')
+        self._wVi_xlab = widgets.Text(description='X label', width=250, placeholder='Ex : time')
+        self._wVi_ylab = widgets.Text(description='Y label', width=250, placeholder='Ex : Amplitude')
+        self._wVi_cmap = widgets.Text(description='Colormap', width=250, placeholder='Ex : viridis')
+        self._wVi_kwarg = widgets.Text(description='kwargs', width=250, placeholder='Ex : {}')
+        _ViS_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _ViS_clear = widgets.Button(description='Clear', button_style='info', margin=20)
+        _ViS_apply.on_click(self._plotVar)
+        _ViS_clear.on_click(self._clearPlot)
+        ViS_button = widgets.HBox(children=[_ViS_apply, _ViS_clear])
         ViS_box = widgets.VBox(
-            children=[self._Vi_var_w, self._Vi_fcn_w, self._Vi_tit_w, self._Vi_xlab_w, self._Vi_ylab_w,
-                      self._Vi_cmap_w, self._Vi_kwarg_w, ViS_button])
+            children=[self._wVi_var, self._wVi_fcn, self._wVi_tit, self._wVi_xlab, self._wVi_ylab,
+                      self._wVi_cmap, self._wVi_kwarg, ViS_button])
 
         # -> Save the figure :
-        self._Vi_path_w = widgets.Text(description='Path', width=250, placeholder='Leave empty for current directory')
-        self._Vi_file_w = widgets.Text(description='File', width=250, placeholder='Ex : myfile')
-        self._Vi_ext_w = widgets.Dropdown(description='Ext', width=10, options=['.png', '.tif', '.jpg'])
-        self._Vi_dpi_w = widgets.Text(description='dpi', width=50, placeholder='100')
-        ViQuality = widgets.HBox(children=[self._Vi_ext_w, self._Vi_dpi_w])
-        self._Vi_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._Vi_clear_w = widgets.Button(description='Clear', button_style='info', margin=20)
-        self._Vi_apply_w.on_click(self._saveFig)
-        ViApp_button = widgets.HBox(children=[self._Vi_apply_w, self._Vi_clear_w])
-        self._Vi_txt = widgets.Latex(value='', color='#A1B56C', margin=5, font_weight='bold', visible=False)
-        _Vi_cat_w = widgets.VBox(children=[self._Vi_path_w, self._Vi_file_w, ViQuality, self._Vi_txt, ViApp_button])
+        self._wVi_path = widgets.Text(description='Path', width=250, placeholder='Leave empty for current directory')
+        self._wVi_file = widgets.Text(description='File', width=250, placeholder='Ex : myfile')
+        self._wVi_ext = widgets.Dropdown(description='Ext', width=10, options=['.png', '.tif', '.jpg'])
+        self._wVi_dpi = widgets.Text(description='dpi', width=50, placeholder='100')
+        _ViQuality = widgets.HBox(children=[self._wVi_ext, self._wVi_dpi])
+        _Vi_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _Vi_clear = widgets.Button(description='Clear', button_style='info', margin=20)
+        _Vi_apply.on_click(self._saveFig)
+        _Vi_clear.on_click(self._clearFig)
+        ViApp_button = widgets.HBox(children=[_Vi_apply, _Vi_clear])
+        self._wVi_txt = widgets.Latex(value='', color='#A1B56C', margin=5, font_weight='bold', visible=False)
+        _Vi_cat_w = widgets.VBox(children=[self._wVi_path, self._wVi_file, _ViQuality, self._wVi_txt, ViApp_button])
 
         # -> CAT :
-        self._subAccVi = widgets.Accordion()
-        self._subAccVi.children = [ViS_box, _Vi_cat_w]
-        [self._subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
+        _subAccVi = widgets.Accordion(font_weight='bold')
+        _subAccVi.children = [ViS_box, _Vi_cat_w]
+        [_subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
 
         # /////////////// SHELL \\\\\\\\\\\\\\\\\
-        self._Sh_ass_w = widgets.Textarea(background_color='#000000', color='#ffffff', placeholder='Enter text', height=500, font_size=15)
-        self._Sh_apply_w = widgets.Button(description='Apply', button_style='success', margin=20)
-        self._Sh_clear_w = widgets.Button(description='Clear', button_style='info', margin=20)
-        sh_button = widgets.HBox(children=[self._Sh_apply_w, self._Sh_clear_w])
-        self._Sh_apply_w.on_click(self._execShell)
-        self._Sh_clear_w.on_click(self._clearShell)
-        self._Sh_cat_w = widgets.VBox(children=[self._Sh_ass_w, sh_button])
+        self._wSh_ass = widgets.Textarea(background_color='#000000', color='#ffffff', placeholder='Enter text', height=500, font_size=15)
+        _wSh_apply = widgets.Button(description='Apply', button_style='success', margin=20)
+        _Sh_clear = widgets.Button(description='Clear', button_style='info', margin=20)
+        sh_button = widgets.HBox(children=[_wSh_apply, _Sh_clear])
+        _wSh_apply.on_click(self._execShell)
+        _Sh_clear.on_click(self._clearShell)
+        _Sh_cat_w = widgets.VBox(children=[self._wSh_ass, sh_button])
 
         # /////////////// FINAL TAB \\\\\\\\\\\\\\\\\
-        self._popout = widgets.Tab()
+        self._popout = widgets.Tab(font_weight='bold')
         self._popout.description = "Workspace"
         self._popout.button_text = self._popout.description
-        self._popout.children = [self._tab, self._subAccSt, self._subAccVi, self._Sh_cat_w]
+        self._popout.children = [self._tab, _subAccSt, _subAccVi, _Sh_cat_w]
         [self._popout.set_title(k, n) for k, n in enumerate(['Workspace', 'Settings', 'Visualization', 'Shell'])]
         self._popout._dom_classes = ['inspector']
 
@@ -151,24 +161,36 @@ class workspace(object):
         # Set unique type to list :
         _typet = list(set(self._vartypes))
         _typet.sort()
-        self._Flt_type_w.options = ['All'] + _typet
+        self._wFlt_type.options = ['All'] + _typet
 
         # Fill tab :
-        self._tablab.value = '<table class="table table-bordered table-striped"><tr><th>Name</th><th>Type</th><th>Value</th><th>Size</th</tr><tr><td>' + \
-        '</td></tr><tr><td>'.join(['{0}</td><td>{1}</td><td>{2}<td>{3}</td>'.format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
-        '</td></tr></table>'
+        self._htmlTable(vName, vType, v, vSize)
 
-        st = self._popout.get_state()
-        st['selected_index'] = 0
-        st = self._popout.set_state(st)
+    def _htmlTable(self, vName, vType, v, vSize):
+        """"""
+        self._tablab.value = """
+        <table class="table table-bordered table-striped">
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Size</th>
+            </tr>
+            <tr>
+                <td>""" + \
+                '</td></tr><tr><td>'.join(["{0}</td><td>{1}</td><td>{2}<td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+                """</td>
+            </tr>
+        </table>"""
 
     # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
     # -> Sorting :
     def _FiltVar(self):
         """Filt, sort variables"""
+        self._popout.selected_index = 0
         vName, vType, vSize = self._varnames, self._vartypes, self._varsizes
         # Get type :
-        typ = self._Flt_type_w.get_state()['selected_label']
+        typ = self._wFlt_type.get_state()['selected_label']
         if typ != 'All':
             fnames = [k for num, k in enumerate(vName) if vType[num] == typ]
         else:
@@ -178,9 +200,9 @@ class workspace(object):
         # Fill a Dataframe :
         pdd = DataFrame({'Name': fnames, 'Size': fsize, 'Type': ftypes})
         # Get sort by :
-        sby = self._Flt_sortBy_w.get_state()['selected_label']
+        sby = self._wFlt_sortBy.get_state()['selected_label']
         # Get ascend/descend :
-        order = self._Flt_order_w.get_state()['selected_label']
+        order = self._wFlt_order.get_state()['selected_label']
         if order == 'Ascending':
             order = True
         else:
@@ -188,7 +210,7 @@ class workspace(object):
         pdd = pdd.sort_values(sby, ascending=order)
         pdd = pdd.set_index([list(np.arange(pdd.shape[0]))])
         # Hide empty size variables :
-        if eval(self._Flt_zs_w.get_state()['selected_label']):
+        if eval(self._wFlt_defSys.get_state()['selected_label']):
             emptyL = []
             for num, v in enumerate(ftypes):
                 emptyL.extend([num for t in self._defPyVar if v == t])
@@ -196,33 +218,29 @@ class workspace(object):
 
         return list(pdd['Name']), list(pdd['Type']), list(pdd['Size'])
 
-    # -> Assign a new value to a variable :
-    def _assignVar(self, *arg):
-        """Assign new value to variable"""
-        varname = self._Op_ass_w.value
-        vartp = self._Op_to_w.value
-        self._namespace.shell.user_ns[varname] = eval(vartp)
+    def _defaultSort(self, *arg):
+        """Reset default sorting options"""
+        # Get elements states :
+        self._wFlt_type.__setattr__('selected_label', 'All')
+        self._wFlt_sortBy.__setattr__('selected_label', 'Name')
+        self._wFlt_order.__setattr__('selected_label', 'Ascending')
+        self._wFlt_defSys.__setattr__('selected_label', 'True')
         self._fill()
-
-    def _clearVar(self, *arg):
-        """Clear assign variables"""
-        self._Op_ass_w.value = ''
-        self._Op_to_w.value = ''
 
     # -> Load/Save variables :
     def _loadsave(self, *arg):
         """Save or load variables"""
-        self._LS_txt.visible = False
+        self._wLS_txt.visible = False
         # Get path :
-        path = self._LS_path_w.value
+        path = self._wLS_path.value
         # Get file name :
-        file = self._LS_file_w.value
+        file = self._wLS_file.value
         savefile = os.path.join(path, file)+'.pickle'
         # Get if it's load or save :
-        ldsv = self._LS_choice_w.get_state()['selected_label']
+        ldsv = self._wLS_choice.get_state()['selected_label']
         if ldsv == 'Save':
             # Get variables :
-            var = self._LS_var_w.value
+            var = self._wLS_var.value
             if var == '':  # Save all variables
                 varname = self._getVarName()
             else:          # Save defined variables
@@ -232,8 +250,8 @@ class workspace(object):
             with open(savefile, 'wb') as f:
                 pickle.dump(data, f)
             # Confirmation text :
-            self._LS_txt.value = savefile+' saved :D'
-            self._LS_txt.visible = True
+            self._wLS_txt.value = savefile+' saved :D'
+            self._wLS_txt.visible = True
         elif ldsv == 'Load':
             # Load data :
             with open(savefile, "rb") as f:
@@ -243,22 +261,41 @@ class workspace(object):
                 self._namespace.shell.user_ns[k] = data[k]
             self._fill()
             # Confirmation text :
-            self._LS_txt.value = savefile+' loaded :D'
-            self._LS_txt.visible = True
+            self._wLS_txt.value = savefile+' loaded :D'
+            self._wLS_txt.visible = True
         sleep(3)
-        self._LS_txt.visible = False
+        self._wLS_txt.visible = False
+
+    def _clearLS(self, *arg):
+        """Clear the save and load module"""
+        self._wLS_path.value = ''
+        self._wLS_file.value = ''
+        self._wLS_var.value = ''
+
+    # -> Assign a new value to a variable :
+    def _assignVar(self, *arg):
+        """Assign new value to variable"""
+        varname = self._wOp_ass.value
+        vartp = self._wOp_to.value
+        self._namespace.shell.user_ns[varname] = eval(vartp)
+        self._fill()
+
+    def _clearVar(self, *arg):
+        """Clear assign variables"""
+        self._wOp_ass.value = ''
+        self._wOp_to.value = ''
 
     # /////////////// VISUALIZATION \\\\\\\\\\\\\\\\\
     def _plotVar(self, *arg):
         """Plot a variable"""
-        varname = self._Vi_var_w.value
-        var = self._namespace.shell.user_ns[varname] # Get variable
-        pltfcn = self._Vi_fcn_w.value  # Plotting function
-        tit = self._Vi_tit_w.value  # title
-        xlab = self._Vi_xlab_w.value  # xlabel
-        ylab = self._Vi_ylab_w.value  # ylabel
-        cmap = self._Vi_cmap_w.value  # cmap
-        kwargs = self._Vi_kwarg_w.value  # kwargs
+        varname = self._wVi_var.value
+        var = self._namespace.shell.user_ns[varname]  # Get variable
+        pltfcn = self._wVi_fcn.value  # Plotting function
+        tit = self._wVi_tit.value  # title
+        xlab = self._wVi_xlab.value  # xlabel
+        ylab = self._wVi_ylab.value  # ylabel
+        cmap = self._wVi_cmap.value  # cmap
+        kwargs = self._wVi_kwarg.value  # kwargs
 
         if cmap == '':
             cmap = 'viridis'
@@ -272,28 +309,44 @@ class workspace(object):
         self._fig = plt.gcf()
         plt.show()
 
+    def _clearPlot(self, *arg):
+        """Clear the save and load module"""
+        self._wVi_var.value = ''
+        self._wVi_tit.value = ''
+        self._wVi_xlab.value = ''
+        self._wVi_ylab.value = ''
+        self._wVi_cmap.value = ''
+        self._wVi_kwarg.value = ''
+        self._wVi_fcn.selected_label = 'plot'
+
     def _saveFig(self, *arg):
         """Save the current figure"""
-        path = self._Vi_path_w.value  # path
-        file = self._Vi_file_w.value  # file
-        ext = self._Vi_ext_w.get_state()['selected_label']  # extension
-        dpi = self._Vi_dpi_w.value  # dpi
-
+        path = self._wVi_path.value  # path
+        file = self._wVi_file.value  # file
+        ext = self._wVi_ext.get_state()['selected_label']  # extension
+        dpi = self._wVi_dpi.value  # dpi
         # Fix dpi :
         if dpi == '':
             dpi = 100
         mpl.rc("savefig", dpi=int(dpi))
         self._fig.savefig(path+file+ext, bbox_inches='tight')
 
+    def _clearFig(self, *arg):
+        """Clear saving figure elements"""
+        self._wVi_path.value = ''
+        self._wVi_file.value = ''
+        self._wVi_ext.selected_label = '.png'
+        self._wVi_dpi.value = ''
+
     # /////////////// SHELL \\\\\\\\\\\\\\\\\
     def _execShell(self, *arg):
         """Execute a shell of commands"""
-        exec(self._Sh_ass_w.value)
+        exec(self._wSh_ass.value)
         self._fill()
 
     def _clearShell(self, *arg):
         """Clear a shell of commands"""
-        self._Sh_ass_w.value = ''
+        self._wSh_ass.value = ''
 
     # /////////////// SYSTEM \\\\\\\\\\\\\\\\\
     def _getVarName(self):
@@ -358,7 +411,6 @@ class workspace(object):
     def detached(self):
         """Put the workspace in a detached resizable window"""
         jav = """
-        <script type="text/Javascript">
         $('div.inspector')
             .detach()
             .prependTo($('body'))
@@ -371,11 +423,9 @@ class workspace(object):
                 position: 'fixed',
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 0.9
-            })
-            .draggable().resizable();
-        </script>
+            }).draggable().resizable();
         """
-        return HTML(jav)
+        return Javascript(jav)
 
     def attached(self):
         """Put the wokspace in a notebook cell"""
