@@ -39,7 +39,8 @@ class workspace(object):
         self._namespace = NamespaceMagics()
         self._namespace.shell = ipython.kernel.shell
         self._getVarInfo()
-        self._defPyVar = ['int', 'float', 'tuple', 'ndarray', 'list', 'dict', 'matrix']
+        self._defPyVar = ['int', 'float', 'tuple', 'ndarray', 'list', 'dict',
+                          'matrix', 'set', 'dataframe', 'series']
         self._ipython = ipython
         self._ipython.events.register('post_run_cell', self._fill)
 
