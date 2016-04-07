@@ -21,16 +21,20 @@ class workspace(object):
     # Define a workspace :
     from wksp import workspace
     wk = workspace()    # define workspace
-    wk                  # display workspace
-
-    # In a new cell, run the ligne above to have a detached workspace :
-    wk.detached()       # detach workspace
+    wk.display()        # display workspace
 
     # Finally, close the workspace :
     wk.close()          # close workspace
     """
+    instance = None
 
     def __init__(self):
+        """Public constructor."""
+        if workspace.instance is not None:
+            raise Exception("""Only one instance of the workspace can exist at a 
+                time.  Call close() on the active instance before creating a new instance.
+                If you have lost the handle to the active instance, you can re-obtain it
+                via `workspace.instance`.""")
         # /////////////// SYSTEM VARIABLES \\\\\\\\\\\\\\\\\
         ipython = get_ipython()
         ipython.user_ns_hidden['widgets'] = widgets
@@ -149,6 +153,10 @@ class workspace(object):
         self._popout.children = [self._tab, _subAccSt, _subAccVi, _Sh_cat_w]
         [self._popout.set_title(k, n) for k, n in enumerate(['Workspace', 'Settings', 'Visualization', 'Shell'])]
         self._popout._dom_classes = ['inspector']
+        self._closeB = widgets.HTML("""<div id="closeButton" type="button" class="close">&times</div>""")
+        self._win = widgets.VBox(children=[self._closeB, self._popout])
+        self._closeB._dom_classes = ['closeButton']
+        self._win._dom_classes = ['mainWin']
 
     # /////////////// TABLE \\\\\\\\\\\\\\\\\
     def _fill(self, *arg):
@@ -407,12 +415,33 @@ class workspace(object):
         """Called when display() or pyout is used to display the variable
         Inspector.
         """
-        self._popout._ipython_display_()
+        self._fill()
+        try:
+            self._win._ipython_display_()
+        except:
+            workspace.instance = None
+            self.__init__()
+            self._win._ipython_display_()
 
-    def detached(self):
-        """Put the workspace in a detached resizable window"""
+    def display(self):
+        """"""
+        R = """
+        $( "#closeButton" ).click(function() {
+          //$(".inspector").hide('').fadeOut(1000);
+          alert( "Handler for .click() called." );
+        });
+        """
+        Javascript(R)
+        if workspace.instance is None:
+            workspace.instance = self
+            self._ipython_display_()
+            return Javascript(self._javaScripts())
+
+    def _javaScripts(self):
+        """Execute javascripts"""
         jav = """
-        $('div.inspector')
+        // Detach the main window :
+        $('div.mainWin')
             .detach()
             .prependTo($('body'))
             .css({
@@ -424,9 +453,16 @@ class workspace(object):
                 position: 'fixed',
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 0.9
-            }).draggable().resizable();
+            }).draggable().resizable().fadeIn(1000);
+
+        // Close the window :
+        $( "#closeButton" ).click(function() {
+          $(".inspector").hide('').fadeOut(1000);
+        });
+
+        // Reduce the window :
         """
-        return Javascript(jav)
+        return jav
 
     def attached(self):
         """Put the wokspace in a notebook cell"""
@@ -437,5 +473,6 @@ class workspace(object):
         """Close and remove hooks."""
         if not self._closed:
             self._ipython.events.unregister('post_run_cell', self._fill)
-            self._popout.close()
+            self._win.close()
             self._closed = True
+            workspace.instance = None
