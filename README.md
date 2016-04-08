@@ -1,6 +1,6 @@
 # ipywksp
 
-Version : 0.0.0
+Version : v0.0.2
 
 ## Description
 Add a workspace to the IPython notebook. Implemented features :
@@ -9,7 +9,6 @@ Add a workspace to the IPython notebook. Implemented features :
 - Display variables according to their types 
 - Save/load in a pickle file
 - Change values of variables
-- Shell : quick simple commands
 - Javascript integration to have a detached workspace
 - Plot variables and save the figure
 
