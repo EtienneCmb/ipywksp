@@ -34,8 +34,11 @@ class _createWindow(object):
     resizale : bool, [def : True]
         Boolean value to set if the window should be resizable or not
 
-    scroll : bool, [def : False]
-        Boolean value to set if the window should be scrollable
+    xscroll : bool, [def : False]
+        Boolean value to set if the window should be x-scrollable
+
+    yscroll : bool, [def : False]
+        Boolean value to set if the window should be y-scrollable
 
     win, clo, red, enl, tab, fit : string
         Name to call it in the javascript (jv). Those parameters can be usefull
@@ -54,8 +57,8 @@ class _createWindow(object):
         Any supplementar arguments to pass to the window is created
     """
 
-    def __init__(self, children=[], title=[''], kind='tab',
-                 resizable=True, scroll=False, win='t', clo='c', red='r',
+    def __init__(self, children=[], title=[''], kind='tab', resizable=True,
+                 xscroll=False, yscroll=False, win='t', clo='c', red='r',
                  enl='e', tab='a', fit='f', tab_kwargs={}, win_kwargs={}):
         # Get variables :
         m = 5
@@ -68,11 +71,22 @@ class _createWindow(object):
         self._fitN = fit
 
         # Define scrolling :
-        if scroll:
-            self._scrollStr = """'overflow': 'auto', 'overflow-x': 'scroll',
-            'overflow-y': 'scroll',"""
+        if xscroll:
+            x_scroll = "'scroll'"
+        else:
+            x_scroll = "'hidden'"
+        if yscroll:
+            y_scroll = "'scroll'"
+        else:
+            y_scroll = "'hidden'"
+        if xscroll or yscroll:
+            self._scrollStr = """
+            'overflow': 'auto',
+            'overflow-x': """ + x_scroll + """,
+            'overflow-y': """ + y_scroll + ", "
         else:
             self._scrollStr = ''
+
         # Resizable :
         if resizable:
             self._resizable = '.resizable()'
@@ -98,7 +112,7 @@ class _createWindow(object):
 
         # Pack toolbar and window
         self._win = wdg.VBox(children=[self._toolbar, self._tab], _dom_classes=[win],
-                             visible=False, **win_kwargs)
+                             visible=False, **win_kwargs, border_radius=5)
         self._display()
 
     def _ipython_display_(self):
@@ -159,12 +173,14 @@ class _createWindow(object):
                     'height': "1%",
                     }, 500, function() {
                     // Animation complete.
-                    });
+                    }).resizable("destroy");
             } else if (tr == 0) {
                 $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
                 $('div."""+self._winN+"""')
-                    .css({"width":"",""" + \
-                    self._scrollStr+""""height":"", "width":"", 'min-width': "19.3%"});
+                    .css({""" + self._scrollStr + """
+                    "height":"",
+                    "width":"",
+                    'min-width': "19.3%"})"""+self._resizable+""";
                 $("."""+self._tabN+"""").delay(200).show('').fadeIn(1000);
             }
         });
@@ -203,20 +219,20 @@ class _createWindow(object):
 
         // Force to fit to the notebook :
         $( "#"""+self._fitN+"""" ).attr('title', 'Fit to the notebook')
-        var tr = 0; // Toggler
+        var tf = 0; // Toggler
         $( "#"""+self._fitN+"""" ).click(function() {
-            tr = ++tr % 2;
-            if (tr == 1) {
+            tf = ++tf % 2;
+            if (tf == 1) {
                 $( "#"""+self._fitN+"""" ).attr('title', 'Auto ajust')
                 $("."""+self._tabN+"""").show('').fadeIn(1000);
                 $('div."""+self._winN+"""')
                     .animate({
-                    'width': "19.3%",
                     'height': "87%",
+                    'width': "19.3%",
                     }, 500, function() {
                     // Animation complete.
                     });
-            } else if (tr == 0) {
+            } else if (tf == 0) {
                 $("."""+self._tabN+"""").show('').fadeIn(1000);
                 $('div."""+self._winN+"""')
                     .css({"width":"",""" + \
@@ -363,21 +379,13 @@ class workspace(_createWindow):
         _subAccVi.children = [ViS_box, _Vi_cat_w]
         [_subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
 
-        # /////////////// SHELL \\\\\\\\\\\\\\\\\
-        self._wSh_ass = wdg.Textarea(background_color='#000000', color='#ffffff', placeholder='Enter text', height=500, font_size=15)
-        _wSh_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _Sh_clear = wdg.Button(description='Clear', button_style='info', margin=20)
-        sh_button = wdg.HBox(children=[_wSh_apply, _Sh_clear])
-        _wSh_apply.on_click(self._execShell)
-        _Sh_clear.on_click(self._clearShell)
-        _Sh_cat_w = wdg.VBox(children=[self._wSh_ass, sh_button])
-
         # /////////////// FINAL TAB \\\\\\\\\\\\\\\\\
         _createWindow.__init__(
-            self, children=[_tab, _subAccSt, _subAccVi, _Sh_cat_w],
-            title=['Workspace', 'Settings', 'Visualization', 'Shell'],
-            scroll=True, win_kwargs={'background_color': '#FFF'})
+            self, children=[_tab, _subAccSt, _subAccVi],
+            title=['Workspace', 'Settings', 'Visualization'],
+            yscroll=True, win_kwargs={'background_color': '#FFF'})
         self._popout = self._tab
+        self._fill()
 
     # /////////////// TABLE \\\\\\\\\\\\\\\\\
     def _fill(self, *arg):
@@ -399,7 +407,7 @@ class workspace(_createWindow):
     def _htmlTable(self, vName, vType, v, vSize):
         """"""
         self._tablab.value = """
-        <table class="table table-bordered table-striped">
+        <table class="table table-bordered table-striped align="center" style='margin: 0px auto;'">
             <tr>
                 <th>Name</th>
                 <th>Type</th>
@@ -408,7 +416,7 @@ class workspace(_createWindow):
             </tr>
             <tr>
                 <td>""" + \
-                '</td></tr><tr><td>'.join(["{0}</td><td>{1}</td><td><div style='display: block; max-height:40px; overflow:hidden; table-layout: fixed; text-overflow: ellipsis'>{2}</div></td><td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+                '</td></tr><tr><td>'.join(["<div style='font-weight:bold'>{0}</div></td><td>{1}</td><td><div style='display: block; max-height:40px; overflow:auto; table-layout: fixed; text-overflow: ellipsis'>{2}</div></td><td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
                 """</td>
             </tr>
         </table>"""
@@ -568,16 +576,6 @@ class workspace(_createWindow):
         self._wVi_ext.selected_label = '.png'
         self._wVi_dpi.value = ''
 
-    # /////////////// SHELL \\\\\\\\\\\\\\\\\
-    def _execShell(self, *arg):
-        """Execute a shell of commands"""
-        exec(self._wSh_ass.value)
-        self._fill()
-
-    def _clearShell(self, *arg):
-        """Clear a shell of commands"""
-        self._wSh_ass.value = ''
-
     # /////////////// SYSTEM \\\\\\\\\\\\\\\\\
     def _getVarName(self):
         """Get variables names"""
@@ -624,8 +622,8 @@ class workspace(_createWindow):
         var.border_color = '#ccc'
         var.border_width = 1
         var.border_radius = 5
-        var.overflow = 'hidden'
-        var.height = 700
-        label = wdg.HTML(value='Not hooked', height='5px', width=5)
+        # var.overflow = 'hidden'
+        # var.height = 700
+        label = wdg.HTML(value='Not hooked')
         var.children = [label]
         return var, label
