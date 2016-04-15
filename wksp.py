@@ -131,21 +131,27 @@ class _createWindow(object):
                 'z-index': 999,
                 'left':"0.2%",
                 'top':"11%",
+                'height': "87%",
+                'width': "19.3%",
                 'min-width': "19.3%",
                 'max-width': "99%",
                 'max-height': "87%",
-                'min-height':'3%',""" + \
-                self._scrollStr+"""
+                'min-height':'3%',""" + self._scrollStr + """
                 position: 'fixed',
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 1
             })
-            .draggable()""" + \
-            self._resizable+"""
+            .draggable()""" + self._resizable + """
             .fadeIn(700)
             ;
         $('div."""+self._tabN+"""')
             .css({'min-width': "100%"})
+
+        // Get browser and window size :
+        var wWin = $(window).width();
+        var hWin = $(window).height();
+        var wBef = $("."""+self._winN+"""").width();
+        var hBef = $("."""+self._winN+"""").height();
 
         // Close the window :
         $( "#"""+self._cloN+"""" ).attr('title', 'Close')
@@ -155,10 +161,19 @@ class _createWindow(object):
 
         // Reduce window :
         $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
+        var leftWin = "0.2%"
         var tr = 0; // Toggler
         $( "#"""+self._redN+"""" ).click(function() {
             tr = ++tr % 2;
             if (tr == 1) {
+                var leftPos = $("."""+self._winN+"""").position().left;
+                if (leftPos < wWin/2) {
+                    leftWin = "0.2%"
+                } else {
+                    leftWin = "95%"
+                }
+                wBef = $("."""+self._winN+"""").width();
+                hBef = $("."""+self._winN+"""").height();
                 $( "#"""+self._redN+"""" ).attr('title', 'Restore')
                 $("."""+self._tabN+"""").hide('').fadeOut(200);
                 $('div."""+self._winN+"""')
@@ -166,7 +181,7 @@ class _createWindow(object):
                     .css({'overflow-y':'', 'overflow-x':''})
                     .animate({
                     'z-index': 999,
-                    'left':"0.2%",
+                    'left':leftWin,
                     'top':"11%",
                     'min-width': "1%",
                     'width': "5%",
@@ -178,8 +193,11 @@ class _createWindow(object):
                 $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
                 $('div."""+self._winN+"""')
                     .css({""" + self._scrollStr + """
-                    "height":"",
-                    "width":"",
+                    'z-index': 999,
+                    'left':"0.2%",
+                    'top':"11%",
+                    "height":hBef,
+                    "width":wBef,
                     'min-width': "19.3%"})"""+self._resizable+""";
                 $("."""+self._tabN+"""").delay(200).show('').fadeIn(1000);
             }
@@ -227,6 +245,9 @@ class _createWindow(object):
                 $("."""+self._tabN+"""").show('').fadeIn(1000);
                 $('div."""+self._winN+"""')
                     .animate({
+                    'z-index': 999,
+                    'left':"0.2%",
+                    'top':"11%",
                     'height': "87%",
                     'width': "19.3%",
                     }, 500, function() {
@@ -236,7 +257,7 @@ class _createWindow(object):
                 $("."""+self._tabN+"""").show('').fadeIn(1000);
                 $('div."""+self._winN+"""')
                     .css({"width":"",""" + \
-                    self._scrollStr+""""height":"", "width":"", 'min-width': "19.3%"});
+                            self._scrollStr+""""height":"", "width":"", 'min-width': "19.3%"});
             }
         });
         """
@@ -266,32 +287,29 @@ class workspace(_createWindow):
     wk.close()          # close workspace
     """
 
-    instance = None
-
     def __init__(self):
         """Public constructor."""
-
-        if workspace.instance is not None:
-            raise Exception("""Only one instance of the workspace can exist at a 
-                time.  Call close() on the active instance before creating a new instance.
-                If you have lost the handle to the active instance, you can re-obtain it
-                via `workspace.instance`.""")
 
         # /////////////// SYSTEM VARIABLES \\\\\\\\\\\\\\\\\
         ipython = get_ipython()
         ipython.user_ns_hidden['widgets'] = wdg
         ipython.user_ns_hidden['NamespaceMagics'] = NamespaceMagics
-        self._closed = False
         self._namespace = NamespaceMagics()
         self._namespace.shell = ipython.kernel.shell
         self._getVarInfo()
         self._defPyVar = ['int', 'float', 'tuple', 'ndarray', 'list', 'dict',
-                          'matrix', 'set', 'dataframe', 'series']
+                          'matrix', 'set', 'dataframe', 'series', 'str']
         self._ipython = ipython
         self._ipython.events.register('post_run_cell', self._fill)
 
         # /////////////// WORKSPACE \\\\\\\\\\\\\\\\\
-        _tab, self._tablab = self._createTab(wdg.Box(), [])
+        _tab = wdg.Box()
+        _tab.background_color = '#fff'
+        _tab.border_color = '#ccc'
+        _tab.border_width = 1
+        _tab.border_radius = 5
+        self._tablab = wdg.HTML(value='Not hooked')
+        _tab.children = [self._tablab]
 
         # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
         # -> Sorting :
@@ -317,7 +335,7 @@ class workspace(_createWindow):
         self._wLS_choice = wdg.ToggleButtons(options=['Save', 'Load'])
         self._wLS_path = wdg.Text(description='Path', width=250, placeholder='Leave empty for current directory', margin=5)
         self._wLS_file = wdg.Text(description='File', width=250, placeholder='Ex : myfile', margin=5)
-        self._wLS_var = wdg.Text(description='Variables', width=250, placeholder='Ex : "x, y, z"', margin=5)
+        self._wLS_var = wdg.Text(description='Variables', width=250, placeholder='Ex : "x, y, z". Empty save all visible variables', margin=5)
         _wLS_apply = wdg.Button(description='Apply', button_style='success', margin=20)
         _wLS_clear = wdg.Button(description='Clear', button_style='info', margin=20)
         _wLS_apply.on_click(self._loadsave)
@@ -380,9 +398,10 @@ class workspace(_createWindow):
         [_subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
 
         # /////////////// FINAL TAB \\\\\\\\\\\\\\\\\
+        javaWin = {'win': 't', 'clo': 'c', 'red': 'r', 'enl': 'e', 'tab': 'a', 'fit': 'f'}
         _createWindow.__init__(
-            self, children=[_tab, _subAccSt, _subAccVi],
-            title=['Workspace', 'Settings', 'Visualization'],
+            self, children=[_tab, _subAccSt, _subAccVi], **javaWin,
+            title=['Workspace', 'Settings', 'Visualization'], xscroll=True,
             yscroll=True, win_kwargs={'background_color': '#FFF'})
         self._popout = self._tab
         self._fill()
@@ -403,20 +422,29 @@ class workspace(_createWindow):
 
         # Fill tab :
         self._htmlTable(vName, vType, v, vSize)
+        self._popout.selected_index = 0
 
     def _htmlTable(self, vName, vType, v, vSize):
-        """"""
+        """Creation of the html table for the workspace"""
+        cellLayout = """
+        <div style='font-weight:bold; text-align:center'>{0}</div></td>""" + \
+            """<td><div style='text-align:center'>{1}</div></td>""" + \
+            """<td><div style='text-align:center'>{2}</div></td><td>""" + \
+            """<div style='max-height:80px; text-overflow:ellipsis; table-layout:fixed; overflow:auto'>{3}</div>""" + \
+            """</td>
+        """
+
         self._tablab.value = """
-        <table class="table table-bordered table-striped align="center" style='margin: 0px auto;'">
+        <table class="table table-bordered table-striped'">
             <tr>
-                <th>Name</th>
-                <th>Type</th>
+                <th><div style='text-align:center'>Name</div></th>
+                <th><div style='text-align:center'>Type</div></th>
+                <th><div style='min-width:40px; text-align:center'>Size</div></th>
                 <th>Value</th>
-                <th>Size</th>
             </tr>
             <tr>
                 <td>""" + \
-                '</td></tr><tr><td>'.join(["<div style='font-weight:bold'>{0}</div></td><td>{1}</td><td><div style='display: block; max-height:40px; overflow:auto; table-layout: fixed; text-overflow: ellipsis'>{2}</div></td><td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+                '</td></tr><tr><td>'.join([cellLayout.format(vName[k], vType[k], vSize[k], str(val)) for k, val in enumerate(v)]) + \
                 """</td>
             </tr>
         </table>"""
@@ -425,7 +453,6 @@ class workspace(_createWindow):
     # -> Sorting :
     def _FiltVar(self):
         """Filt, sort variables"""
-        self._popout.selected_index = 0
         vName, vType, vSize = self._varnames, self._vartypes, self._varsizes
         # Get type :
         typ = self._wFlt_type.get_state()['selected_label']
@@ -480,10 +507,10 @@ class workspace(_createWindow):
             # Get variables :
             var = self._wLS_var.value
             if var == '':  # Save all variables
-                varname = self._getVarName()
+                vName, _, _ = self._FiltVar()
             else:          # Save defined variables
-                varname = var.replace(' ', '').split(sep=',')
-            data = {name: self._namespace.shell.user_ns[name] for name in varname}
+                vName = var.replace(' ', '').split(sep=',')
+            data = {name: self._namespace.shell.user_ns[name] for name in vName}
             # Save :
             with open(savefile, 'wb') as f:
                 pickle.dump(data, f)
@@ -497,10 +524,11 @@ class workspace(_createWindow):
             # Add variables to workspace :
             for k in data.keys():
                 self._namespace.shell.user_ns[k] = data[k]
-            self._fill()
             # Confirmation text :
             self._wLS_txt.value = savefile+' loaded :D'
             self._wLS_txt.visible = True
+            sleep(2)
+            self._fill()
         sleep(3)
         self._wLS_txt.visible = False
 
