@@ -333,12 +333,6 @@ class _createWindow(object):
             self._tab.children = newchilds
             self._win.childen = []
             self._win.childen = [self._tab]
-            
-            
-            
-
-            # [self._tab.set_trait('children', newchilds) for k in newchilds]
-
 
 
 class workspace(_createWindow):
