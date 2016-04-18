@@ -43,12 +43,12 @@ class _createWindow(object):
     win, clo, red, enl, tab, fit : string
         Name to call it in the javascript (jv). Those parameters can be usefull
         if there is multiple windows.
-            - win : jv name of the window [def : 't']
-            - tab : jv name of the table [def : 'a']
-            - fit : jv name of the fitting button [def : 'f']
-            - red : jv name of the reduce button [def : 'r']
-            - enl : jv name of the enlarge button [def : 'e']
-            - clo : jv name of the close button [def : 'c']
+            - win : jv name of the window [def : '_cwt']
+            - tab : jv name of the table [def : '_cwa']
+            - fit : jv name of the fitting button [def : '_cwf']
+            - red : jv name of the reduce button [def : '_cwr']
+            - enl : jv name of the enlarge button [def : '_cwe']
+            - clo : jv name of the close button [def : '_cwc']
 
     tab_kwargs : dict, [def : {}]
         Any supplementar arguments to pass to the created tab
@@ -61,12 +61,12 @@ class _createWindow(object):
     """
 
     def __init__(self, children=[], title=[''], kind='tab', resizable=True,
-                 xscroll=False, yscroll=False, win='t', clo='c', red='r',
-                 enl='e', tab='a', fit='f', place='left', tab_kwargs={},
-                 win_kwargs={}, but_kwargs={}):
+                 xscroll=False, yscroll=False, win='_cwt', clo='_cwc',
+                 red='_cwr', enl='_cwe', tab='_cwa', fit='_cwf', place='left',
+                 tab_kwargs={}, win_kwargs={}, but_kwargs={}):
         # Get variables :
         m = 5
-        defStr = '<div id="{0}" type="button" class="close">{1}</div>'
+        dS = '<div id="{0}" type="button" class="close">{1}</div>'
         self._winN = win
         self._tabN = tab
         self._cloN = clo
@@ -115,15 +115,17 @@ class _createWindow(object):
             packStr = 'end'
 
         # Create toolbar :
-        cloW = wdg.HTML(defStr.format(clo, '&times'), margin=m, _dom_classes=[clo])
-        redW = wdg.HTML(defStr.format(red, '&#8722'), margin=m, _dom_classes=[red])
-        enlW = wdg.HTML(defStr.format(enl, '&#8734'), margin=m, _dom_classes=[enl])
-        resW = wdg.HTML(defStr.format(fit, '&#8596'), margin=m, _dom_classes=[fit])
-        self._toolbar = wdg.HBox(children=[resW, redW, enlW, cloW], pack=packStr, width='100%', **but_kwargs)
+        cloW = wdg.HTML(dS.format(clo, '&times'), margin=m, _dom_classes=[clo])
+        redW = wdg.HTML(dS.format(red, '&#8722'), margin=m, _dom_classes=[red])
+        enlW = wdg.HTML(dS.format(enl, '&#8734'), margin=m, _dom_classes=[enl])
+        resW = wdg.HTML(dS.format(fit, '&#8596'), margin=m, _dom_classes=[fit])
+        self._toolbar = wdg.HBox(children=[resW, redW, enlW, cloW],
+                                 pack=packStr, width='100%', **but_kwargs)
 
         # Pack toolbar and window
-        self._win = wdg.VBox(children=[self._toolbar, self._tab], _dom_classes=[win],
-                             visible=False, **win_kwargs, border_radius=5)
+        self._win = wdg.VBox(
+                    children=[self._toolbar, self._tab], _dom_classes=[win],
+                    visible=False, **win_kwargs, border_radius=5)
         self._display()
 
     def _ipython_display_(self):
@@ -154,17 +156,17 @@ class _createWindow(object):
 
         jav = """
         // Usefull variables :
-        var wPos = $("."""+self._winN+"""").position();
-        var wWin = $(window).width();
-        var hWin = $(window).height();
-        var wBef = $("."""+self._winN+"""").width();
-        var hBef = $("."""+self._winN+"""").height();
+        var wPos = $(".{window}").position();
+        var wWin = $(".{window}").width();
+        var hWin = $(".{window}").height();
+        var wBef = $(".{window}").width();
+        var hBef = $(".{window}").height();
 
         // Detach the main window :
-        $('div."""+self._winN+"""')
+        $('div.{window}')
             .detach()
             .prependTo($('body'))
-            .css({
+            .css({{
                 'z-index': 999,
                 'left':wLeft,
                 'top':"11%",
@@ -173,122 +175,136 @@ class _createWindow(object):
                 'min-width': "19.3%",
                 'max-width': "99%",
                 'max-height': "87%",
-                'min-height':'3%',""" + self._scrollStr + """
+                'min-height':'3%',
+                {scroll}
                 position: 'fixed',
                 display:"inline-block",
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 1
-            })
-            .draggable({
-        start: function(event, ui) { $(this).css({opacity: 0.1})},
-        stop: function(event, ui) { $(this).css({opacity: 1})}})""" + self._resizable + """
+            }})
+            .draggable({{
+                start: function(event, ui) {{$(this).css({{opacity: 0.1}})}},
+                stop: function(event, ui) {{$(this).css({{opacity: 1}})}}}})
+             {resize}
             .fadeIn(700);
-        $('div."""+self._tabN+"""')
-            .css({'min-width': "100%", 'min_height': "100%", 'width': "100%", 'height': "100%", display:"inline-block"})
+
+        // Tab settings :
+        $('div.{tab}')
+            .css({{
+            'min-width': "100%",
+            'min_height': "100%",
+            'width': "100%",
+            'height': "100%",
+            display:"inline-block"}})
 
         // Close the window :
-        $( "#"""+self._cloN+"""" ).attr('title', 'Close')
-        $( "#"""+self._cloN+"""" ).click(function() {
-          $("."""+self._winN+"""").hide("blind", 500);
-        });
+        $( "#{close}" ).attr('title', 'Close')
+        $( "#{close}" ).click(function() {{
+            $(".{window}").hide("blind", 500);
+        }});
 
         // Reduce window :
-        $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
+        $( "#{reduce}" ).attr('title', 'Reduce')
         var tr = 0; // Toggler
-        $( "#"""+self._redN+"""" ).click(function() {
+        $( "#{reduce}" ).click(function() {{
             tr = ++tr % 2;
-            if (tr == 1) {
+            if (tr == 1) {{
                 // Update variables :
-                wBef = $("."""+self._winN+"""").width();
-                hBef = $("."""+self._winN+"""").height();
-                wPos = $("."""+self._winN+"""").position();
+                wBef = $(".{window}").width();
+                hBef = $(".{window}").height();
+                wPos = $(".{window}").position();
                 // Reduce / Enlarge :
-                $( "#"""+self._redN+"""" ).attr('title', 'Restore')
-                $("."""+self._tabN+"""").hide("drop", 400);
-                $('div."""+self._winN+"""')
-                    .css({'overflow-y':'', 'overflow-x':''})
-                    .animate({
+                $( "#{reduce}" ).attr('title', 'Restore')
+                $(".{tab}").hide("drop", 400);
+                $('div.{window}')
+                    .css({{'overflow-y':'', 'overflow-x':''}})
+                    .animate({{
                     'z-index': 999,
                     'left':redSmall,
                     'top':"11%",
                     'min-width': "1%",
                     'width': "5%",
                     'height': "1%",
-                    }, 500, "easeOutCubic", function() {
+                    }}, 500, "easeOutCubic", function() {{
                     // Animation complete.
-                    }).resizable("destroy");
-            } else if (tr == 0) {
-                $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
-                $('div."""+self._winN+"""')
-                    .css({'overflow-y':'', 'overflow-x':''})
-                    .animate({""" + self._scrollStr + """
+                    }}).resizable("destroy");
+            }} else if (tr == 0) {{
+                $( "#{reduce}" ).attr('title', 'Reduce')
+                $('div.{window}')
+                    .css({{'overflow-y':'', 'overflow-x':''}})
+                    .animate({{
+                    {scroll}
                     'z-index': 999,
                     'left':wPos.left,
                     'top':wPos.top,
                     "height":hBef,
                     "width":wBef,
                     'min-width': "19.3%"
-                    }, 500, "easeOutCubic", function() {
+                    }}, 500, "easeOutCubic", function() {{
                     // Animation complete.
-                    })"""+self._resizable+""";
-                $("."""+self._tabN+"""").show('slide', 400);
-            }
-        });
+                    }}){resize};
+                $(".{tab}").show('slide', 400);
+            }}
+        }});
 
         // Enlarge window :
-        $( "#"""+self._enlN+"""" ).attr('title', 'Enlarge')
+        $( "#{enlarge}" ).attr('title', 'Enlarge')
         var tw = 0; // Toggler
         var leftWi = "50%"
         var leftHe = "60%"
         var leftOffset = "0.2%"
         var enlTitle = "Restore"
-        $( "#"""+self._enlN+"""" ).click(function(e) {
+        $( "#{enlarge}" ).click(function(e) {{
             // Update variables :
             tr = 0;
             tw = ++tw % 2;
-            if (tw == 1) {
+            if (tw == 1) {{
                 var leftWi = "99%"
                 var leftHe = "87%"
-            } else if (tw == 0) {
+            }} else if (tw == 0) {{
                 var leftWi = "50%"
                 var leftHe = "60%"
-            }
+            }}
             // Manage left offset :
-            if (boolPlace == 0) {
+            if (boolPlace == 0) {{
                 var leftOffset = "0.2%"
-            } else {
+            }} else {{
                 var leftOffset = wWin*(1-parseInt(leftWi)/100)-wWin*0.008
-            }
-            $( "#"""+self._enlN+"""" ).attr('title', 'Restore')
-            $("."""+self._tabN+"""").show('').fadeIn(1000);
-            $('div."""+self._winN+"""')
-                .animate({
+            }}
+            $( "#{enlarge}" ).attr('title', 'Restore')
+            $(".{tab}").show('').fadeIn(1000);
+            $('div.{window}')
+                .animate({{
                 'left': leftOffset,
                 'width': leftWi,
                 'height': leftHe,
-                }, 500, "easeOutExpo", function() {
+                }}, 500, "easeOutExpo", function() {{
                 // Animation complete.
-                });
-        });
+                }});
+        }});
 
         // Force to fit to the notebook :
-        $( "#"""+self._fitN+"""" ).attr('title', 'Fit to the notebook')
-        $( "#"""+self._fitN+"""" ).click(function() {
+        $( "#{fit}" ).attr('title', 'Fit to the notebook')
+        $( "#{fit}" ).click(function() {{
             tr = 0;
-            $("."""+self._tabN+"""").show('').fadeIn(1000);
-            $('div."""+self._winN+"""')
-                .css({""" + self._scrollStr + """})
-                .animate({
+            $(".{tab}").show('').fadeIn(1000);
+            $('div.{window}')
+                .css({{ {scroll} }})
+                .animate({{
                 'z-index': 999,
                 'left':wLeft,
                 'top':"11%",
                 'height': wHeight,
                 'width': wWidth,
-                }, 500, "easeOutExpo", function() {
+                }}, 500, "easeOutExpo", function() {{
                 // Animation complete.
-                });
-        });
+                }});
+        }});
         """
+        jav = jav.format(window=self._winN, scroll=self._scrollStr,
+                         tab=self._tabN, resize=self._resizable,
+                         close=self._cloN, reduce=self._redN,
+                         enlarge=self._enlN, fit=self._fitN)
         return var+jav
 
     def _display(self):
