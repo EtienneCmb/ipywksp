@@ -1,6 +1,6 @@
 # ipywksp
 
-Version : v0.0.2
+Version : v0.0.3
 
 ## Description
 Add a workspace to the IPython notebook. Implemented features :
