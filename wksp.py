@@ -51,15 +51,19 @@ class _createWindow(object):
             - clo : jv name of the close button [def : 'c']
 
     tab_kwargs : dict, [def : {}]
-        Any supplementar arguments to pass to the tab is created
+        Any supplementar arguments to pass to the created tab
 
     win_kwargs : dict, [def : {}]
-        Any supplementar arguments to pass to the window is created
+        Any supplementar arguments to pass to the created window
+
+    but_kwargs : dict, [def : {}]
+        Any supplementar arguments to pass to buttons
     """
 
     def __init__(self, children=[], title=[''], kind='tab', resizable=True,
                  xscroll=False, yscroll=False, win='t', clo='c', red='r',
-                 enl='e', tab='a', fit='f', tab_kwargs={}, win_kwargs={}):
+                 enl='e', tab='a', fit='f', place='left', tab_kwargs={},
+                 win_kwargs={}, but_kwargs={}):
         # Get variables :
         m = 5
         defStr = '<div id="{0}" type="button" class="close">{1}</div>'
@@ -69,6 +73,7 @@ class _createWindow(object):
         self._redN = red
         self._enlN = enl
         self._fitN = fit
+        self._place = place
 
         # Define scrolling :
         if xscroll:
@@ -103,12 +108,18 @@ class _createWindow(object):
         for k in range(len(children)):
             self._tab.set_title(k, title[k])
 
+        # Pack toolbar:
+        if place == 'left':
+            packStr = 'start'
+        elif place == 'right':
+            packStr = 'end'
+
         # Create toolbar :
         cloW = wdg.HTML(defStr.format(clo, '&times'), margin=m, _dom_classes=[clo])
         redW = wdg.HTML(defStr.format(red, '&#8722'), margin=m, _dom_classes=[red])
         enlW = wdg.HTML(defStr.format(enl, '&#8734'), margin=m, _dom_classes=[enl])
         resW = wdg.HTML(defStr.format(fit, '&#8596'), margin=m, _dom_classes=[fit])
-        self._toolbar = wdg.HBox(children=[resW, redW, enlW, cloW], pack='end', align='end', width='100%')
+        self._toolbar = wdg.HBox(children=[resW, redW, enlW, cloW], pack=packStr, width='100%', **but_kwargs)
 
         # Pack toolbar and window
         self._win = wdg.VBox(children=[self._toolbar, self._tab], _dom_classes=[win],
@@ -122,35 +133,63 @@ class _createWindow(object):
     def _javascript(self):
         """Java scripts for detaching the window and for each button in the toolbar
         """
+        if self._place == 'left':  # Window to the left of the notebook:
+            var = """
+            var boolPlace = 0;
+            var wLeft = "0.2%";
+            var wWidth = "19.3%";
+            var wHeight = "87%";
+            var redSmall = "0.2%";
+            var redEnl = "0.2%";
+            """
+        else:                      # Window to the right of the notebook:
+            var = """
+            var boolPlace = 1;
+            var wLeft = "79.5%";
+            var wWidth = "19.3%";
+            var wHeight = "87%";
+            var redSmall = "94%";
+            var redEnl = "79.5%";
+            """
+
         jav = """
+        // Usefull variables :
+        var wPos = $("."""+self._winN+"""").position();
+        var wWin = $(window).width();
+        var hWin = $(window).height();
+        var wBef = $("."""+self._winN+"""").width();
+        var hBef = $("."""+self._winN+"""").height();
+
         // Detach the main window :
         $('div."""+self._winN+"""')
             .detach()
             .prependTo($('body'))
             .css({
                 'z-index': 999,
-                'left':"0.2%",
+                'left':wLeft,
                 'top':"11%",
+                'height': wHeight,
+                'width': wWidth,
                 'min-width': "19.3%",
                 'max-width': "99%",
                 'max-height': "87%",
-                'min-height':'3%',""" + \
-                self._scrollStr+"""
+                'min-height':'3%',""" + self._scrollStr + """
                 position: 'fixed',
+                display:"inline-block",
                 'box-shadow': '5px 5px 12px -3px black',
                 opacity: 1
             })
-            .draggable()""" + \
-            self._resizable+"""
-            .fadeIn(700)
-            ;
+            .draggable({
+        start: function(event, ui) { $(this).css({opacity: 0.1})},
+        stop: function(event, ui) { $(this).css({opacity: 1})}})""" + self._resizable + """
+            .fadeIn(700);
         $('div."""+self._tabN+"""')
-            .css({'min-width': "100%"})
+            .css({'min-width': "100%", 'min_height': "100%", 'width': "100%", 'height': "100%", display:"inline-block"})
 
         // Close the window :
         $( "#"""+self._cloN+"""" ).attr('title', 'Close')
         $( "#"""+self._cloN+"""" ).click(function() {
-          $("."""+self._winN+"""").hide('').fadeOut(1000);
+          $("."""+self._winN+"""").hide("blind", 500);
         });
 
         // Reduce window :
@@ -159,98 +198,141 @@ class _createWindow(object):
         $( "#"""+self._redN+"""" ).click(function() {
             tr = ++tr % 2;
             if (tr == 1) {
+                // Update variables :
+                wBef = $("."""+self._winN+"""").width();
+                hBef = $("."""+self._winN+"""").height();
+                wPos = $("."""+self._winN+"""").position();
+                // Reduce / Enlarge :
                 $( "#"""+self._redN+"""" ).attr('title', 'Restore')
-                $("."""+self._tabN+"""").hide('').fadeOut(200);
+                $("."""+self._tabN+"""").hide("drop", 400);
                 $('div."""+self._winN+"""')
-                    .delay(400)
                     .css({'overflow-y':'', 'overflow-x':''})
                     .animate({
                     'z-index': 999,
-                    'left':"0.2%",
+                    'left':redSmall,
                     'top':"11%",
                     'min-width': "1%",
                     'width': "5%",
                     'height': "1%",
-                    }, 500, function() {
+                    }, 500, "easeOutCubic", function() {
                     // Animation complete.
                     }).resizable("destroy");
             } else if (tr == 0) {
                 $( "#"""+self._redN+"""" ).attr('title', 'Reduce')
                 $('div."""+self._winN+"""')
-                    .css({""" + self._scrollStr + """
-                    "height":"",
-                    "width":"",
-                    'min-width': "19.3%"})"""+self._resizable+""";
-                $("."""+self._tabN+"""").delay(200).show('').fadeIn(1000);
+                    .css({'overflow-y':'', 'overflow-x':''})
+                    .animate({""" + self._scrollStr + """
+                    'z-index': 999,
+                    'left':wPos.left,
+                    'top':wPos.top,
+                    "height":hBef,
+                    "width":wBef,
+                    'min-width': "19.3%"
+                    }, 500, "easeOutCubic", function() {
+                    // Animation complete.
+                    })"""+self._resizable+""";
+                $("."""+self._tabN+"""").show('slide', 400);
             }
         });
 
         // Enlarge window :
         $( "#"""+self._enlN+"""" ).attr('title', 'Enlarge')
         var tw = 0; // Toggler
+        var leftWi = "50%"
+        var leftHe = "60%"
+        var leftOffset = "0.2%"
+        var enlTitle = "Restore"
         $( "#"""+self._enlN+"""" ).click(function(e) {
-            tw = ++tw % 3;
-            if (tw == 2) {
-                $( "#"""+self._enlN+"""" ).attr('title', 'Restore')
-                $("."""+self._tabN+"""").show('').fadeIn(1000);
-                $('div."""+self._winN+"""')
-                    .animate({
-                    'width': "99%",
-                    'height': "87%",
-                    }, 500, "linear", function() {
-                    // Animation complete.
-                    });
-            } else if (tw == 1) {
-                $( "#"""+self._enlN+"""" ).attr('title', 'Full screen')
-                $("."""+self._tabN+"""").show('').fadeIn(1000);
-                $('div."""+self._winN+"""')
-                    .animate({
-                    'width': "50%",
-                    'height': "60%",
-                    }, 500, function() {
-                    // Animation complete.
-                    });
+            // Update variables :
+            tr = 0;
+            tw = ++tw % 2;
+            if (tw == 1) {
+                var leftWi = "99%"
+                var leftHe = "87%"
             } else if (tw == 0) {
-                $( "#"""+self._enlN+"""" ).attr('title', 'Enlarge')
-                $("."""+self._tabN+"""").show('').fadeIn(1000);
-                $('div."""+self._winN+"""').css({"width":"", "height":""});
+                var leftWi = "50%"
+                var leftHe = "60%"
             }
+            // Manage left offset :
+            if (boolPlace == 0) {
+                var leftOffset = "0.2%"
+            } else {
+                var leftOffset = wWin*(1-parseInt(leftWi)/100)-wWin*0.008
+            }
+            $( "#"""+self._enlN+"""" ).attr('title', 'Restore')
+            $("."""+self._tabN+"""").show('').fadeIn(1000);
+            $('div."""+self._winN+"""')
+                .animate({
+                'left': leftOffset,
+                'width': leftWi,
+                'height': leftHe,
+                }, 500, "easeOutExpo", function() {
+                // Animation complete.
+                });
         });
 
         // Force to fit to the notebook :
         $( "#"""+self._fitN+"""" ).attr('title', 'Fit to the notebook')
-        var tf = 0; // Toggler
         $( "#"""+self._fitN+"""" ).click(function() {
-            tf = ++tf % 2;
-            if (tf == 1) {
-                $( "#"""+self._fitN+"""" ).attr('title', 'Auto ajust')
-                $("."""+self._tabN+"""").show('').fadeIn(1000);
-                $('div."""+self._winN+"""')
-                    .animate({
-                    'height': "87%",
-                    'width': "19.3%",
-                    }, 500, function() {
-                    // Animation complete.
-                    });
-            } else if (tf == 0) {
-                $("."""+self._tabN+"""").show('').fadeIn(1000);
-                $('div."""+self._winN+"""')
-                    .css({"width":"",""" + \
-                    self._scrollStr+""""height":"", "width":"", 'min-width': "19.3%"});
-            }
+            tr = 0;
+            $("."""+self._tabN+"""").show('').fadeIn(1000);
+            $('div."""+self._winN+"""')
+                .css({""" + self._scrollStr + """})
+                .animate({
+                'z-index': 999,
+                'left':wLeft,
+                'top':"11%",
+                'height': wHeight,
+                'width': wWidth,
+                }, 500, "easeOutExpo", function() {
+                // Animation complete.
+                });
         });
         """
-        return jav
+        return var+jav
 
     def _display(self):
         """Subfunction to display the window and detach it"""
         self._ipython_display_()
-        sleep(0.5)
+        # sleep(0.5)
         display(Javascript(self._javascript()))
 
     def display(self):
         """Display the already created window"""
         display(Javascript("""$('div."""+self._winN+"""').show('').fadeIn(1000)"""))
+
+    def _addchild(self, child, name=""):
+        """Add a child to the tab. "child" must be a widget and "name" a string
+        for the title of the new tab"""
+        Nchilds = len(self._tab.children)
+        self._tab.children = self._tab.children + (child,)
+        if (name != "") and isinstance(name, str):
+            self._tab.set_title(Nchilds, name)
+
+    def _rmchild(self, name):
+        """Remove a child to the tab. "name" must be a string corresponding to
+        the tab to remove"""
+        NoldChilds = len(self._tab.children)
+        oldTitles = [self._tab.get_title(k) for k in range(NoldChilds)]
+        if name in oldTitles:
+            num = oldTitles.index(name)
+            oldTitles.pop(num)
+            # 
+            st = self._tab.get_state()
+            st_titles = st['_titles']
+            st_titles.pop(num)
+            # st['_titles'] = {k: st_titles[i] for k, i in enumerate(list(st_titles.keys()))}
+            self._tab.set_trait('_titles', {k: st_titles[i] for k, i in enumerate(list(st_titles.keys()))})
+
+            # print(self._tab.get_state()['_titles'])
+            
+            newchilds = [i for k, i in enumerate(self._tab.children) if k != num]
+            [self._tab.set_title(k, i) for k, i in enumerate(oldTitles)]
+            [self._tab.set_title(k, i) for k, i in enumerate(oldTitles)]
+            self._tab.selected_index = 1
+            self._tab.children = newchilds
+            self._win.childen = []
+            self._win.childen = [self._tab]
 
 
 class workspace(_createWindow):
@@ -266,32 +348,37 @@ class workspace(_createWindow):
     wk.close()          # close workspace
     """
 
-    instance = None
-
-    def __init__(self):
+    def __init__(self, theme="light"):
         """Public constructor."""
 
-        if workspace.instance is not None:
-            raise Exception("""Only one instance of the workspace can exist at a 
-                time.  Call close() on the active instance before creating a new instance.
-                If you have lost the handle to the active instance, you can re-obtain it
-                via `workspace.instance`.""")
+        if theme == "light":
+            wkth = {'background_color': '#FFF', 'color': '#181818'}
+            butbck = {'background_color': '#e8e8e8'}
+        elif theme == "dark":
+            wkth = {'background_color': '#272822', 'color': '#FFF'}
+            butbck = {'background_color': '#CF4A4C'}
 
         # /////////////// SYSTEM VARIABLES \\\\\\\\\\\\\\\\\
         ipython = get_ipython()
         ipython.user_ns_hidden['widgets'] = wdg
         ipython.user_ns_hidden['NamespaceMagics'] = NamespaceMagics
-        self._closed = False
         self._namespace = NamespaceMagics()
         self._namespace.shell = ipython.kernel.shell
         self._getVarInfo()
         self._defPyVar = ['int', 'float', 'tuple', 'ndarray', 'list', 'dict',
-                          'matrix', 'set', 'dataframe', 'series']
+                          'matrix', 'set', 'dataframe', 'series', 'str']
         self._ipython = ipython
         self._ipython.events.register('post_run_cell', self._fill)
+        apply_color = {'background_color': '#A1B56C', 'color': '#282828', 'font_weight': 'bold'}
+        clear_color = {'background_color': '#7cafc2', 'color': '#282828', 'font_weight': 'bold'}
 
         # /////////////// WORKSPACE \\\\\\\\\\\\\\\\\
-        _tab, self._tablab = self._createTab(wdg.Box(), [])
+        _tab = wdg.Box(_dom_classes=['wkspTable'])
+        _tab.border_color = '#ccc'
+        _tab.border_width = 1
+        _tab.border_radius = 5
+        self._tablab = wdg.HTML(value='Not hooked')
+        _tab.children = [self._tablab]
 
         # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
         # -> Sorting :
@@ -306,8 +393,8 @@ class workspace(_createWindow):
         self._wFlt_sizeChk = wdg.Checkbox(description='Size', value=True)
         Flt_columns = wdg.HBox(description='Columns', children=[self._wFlt_nameChk, self._wFlt_typeChk, self._wFlt_valChk, self._wFlt_sizeChk])
         # Apply/default button :
-        _wFlt_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _wFlt_def = wdg.Button(description='Default', button_style='info', margin=20)
+        _wFlt_apply = wdg.Button(description='Apply', button_style='success', margin=20, **apply_color)
+        _wFlt_def = wdg.Button(description='Default', button_style='info', margin=20, **clear_color)
         Flt_button = wdg.HBox(children=[_wFlt_apply, _wFlt_def])
         _wFlt_apply.on_click(self._fill)
         _wFlt_def.on_click(self._defaultSort)
@@ -317,9 +404,9 @@ class workspace(_createWindow):
         self._wLS_choice = wdg.ToggleButtons(options=['Save', 'Load'])
         self._wLS_path = wdg.Text(description='Path', width=250, placeholder='Leave empty for current directory', margin=5)
         self._wLS_file = wdg.Text(description='File', width=250, placeholder='Ex : myfile', margin=5)
-        self._wLS_var = wdg.Text(description='Variables', width=250, placeholder='Ex : "x, y, z"', margin=5)
-        _wLS_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _wLS_clear = wdg.Button(description='Clear', button_style='info', margin=20)
+        self._wLS_var = wdg.Text(description='Variables', width=250, placeholder='Ex : "x, y, z". Empty save all visible variables', margin=5)
+        _wLS_apply = wdg.Button(description='Apply', button_style='success', margin=20, **apply_color)
+        _wLS_clear = wdg.Button(description='Clear', button_style='info', margin=20, **clear_color)
         _wLS_apply.on_click(self._loadsave)
         _wLS_clear.on_click(self._clearLS)
         LS_button = wdg.HBox(children=[_wLS_apply, _wLS_clear])
@@ -329,15 +416,16 @@ class workspace(_createWindow):
         # -> Operation :
         self._wOp_ass = wdg.Text(description='Assign', width=300, placeholder='variable')
         self._wOp_to = wdg.Text(description='To', width=300, placeholder='var/expression')
-        _wOp_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _wOp_clear = wdg.Button(description='Clear', button_style='info', margin=20)
+        _wOp_apply = wdg.Button(description='Apply', button_style='success', margin=20, **apply_color)
+        _wOp_clear = wdg.Button(description='Clear', button_style='info', margin=20, **clear_color)
         Op_button = wdg.HBox(children=[_wOp_apply, _wOp_clear])
         _wOp_apply.on_click(self._assignVar)
         _wOp_clear.on_click(self._clearVar)
-        _Op_cat_w = wdg.VBox(children=[self._wOp_ass, self._wOp_to, Op_button])
+        self._wOp_insp = wdg.Text(description='Inspect', width=300, placeholder='variable')
+        _Op_cat_w = wdg.VBox(children=[self._wOp_ass, self._wOp_to, Op_button, self._wOp_insp])
 
         # -> CAT :
-        _subAccSt = wdg.Accordion(font_weight='bold')
+        _subAccSt = wdg.Accordion(font_weight='bold', **wkth)
         _subAccSt.children = [_wFlt_cat, _LS_cat, _Op_cat_w]
         [_subAccSt.set_title(k, n) for k, n in enumerate(['Sorting', 'Save/Load','Variables'])]
 
@@ -351,8 +439,8 @@ class workspace(_createWindow):
         self._wVi_ylab = wdg.Text(description='Y label', width=250, placeholder='Ex : Amplitude')
         self._wVi_cmap = wdg.Text(description='Colormap', width=250, placeholder='Ex : viridis')
         self._wVi_kwarg = wdg.Text(description='kwargs', width=250, placeholder='Ex : {}')
-        _ViS_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _ViS_clear = wdg.Button(description='Clear', button_style='info', margin=20)
+        _ViS_apply = wdg.Button(description='Apply', button_style='success', margin=20, **apply_color)
+        _ViS_clear = wdg.Button(description='Clear', button_style='info', margin=20, **clear_color)
         _ViS_apply.on_click(self._plotVar)
         _ViS_clear.on_click(self._clearPlot)
         ViS_button = wdg.HBox(children=[_ViS_apply, _ViS_clear])
@@ -366,8 +454,8 @@ class workspace(_createWindow):
         self._wVi_ext = wdg.Dropdown(description='Ext', width=10, options=['.png', '.tif', '.jpg'])
         self._wVi_dpi = wdg.Text(description='dpi', width=50, placeholder='100')
         _ViQuality = wdg.HBox(children=[self._wVi_ext, self._wVi_dpi])
-        _Vi_apply = wdg.Button(description='Apply', button_style='success', margin=20)
-        _Vi_clear = wdg.Button(description='Clear', button_style='info', margin=20)
+        _Vi_apply = wdg.Button(description='Apply', button_style='success', margin=20, **apply_color)
+        _Vi_clear = wdg.Button(description='Clear', button_style='info', margin=20, **clear_color)
         _Vi_apply.on_click(self._saveFig)
         _Vi_clear.on_click(self._clearFig)
         ViApp_button = wdg.HBox(children=[_Vi_apply, _Vi_clear])
@@ -380,10 +468,12 @@ class workspace(_createWindow):
         [_subAccVi.set_title(k, n) for k, n in enumerate(['Settings', 'Save/Load'])]
 
         # /////////////// FINAL TAB \\\\\\\\\\\\\\\\\
+        javaWin = {'win': '_wkt', 'clo': '_wkc', 'red': '_wkr', 'enl': '_wke', 'tab': '_wka', 'fit': '_wkf'}
         _createWindow.__init__(
-            self, children=[_tab, _subAccSt, _subAccVi],
-            title=['Workspace', 'Settings', 'Visualization'],
-            yscroll=True, win_kwargs={'background_color': '#FFF'})
+            self, children=[_tab, _subAccSt, _subAccVi], **javaWin,
+            title=['Workspace', 'Settings', 'Visualization'], xscroll=False,
+            yscroll=False, win_kwargs=wkth, tab_kwargs=wkth, but_kwargs=butbck,
+            place='left')
         self._popout = self._tab
         self._fill()
 
@@ -400,32 +490,47 @@ class workspace(_createWindow):
         _typet = list(set(self._vartypes))
         _typet.sort()
         self._wFlt_type.options = ['All'] + _typet
-
         # Fill tab :
         self._htmlTable(vName, vType, v, vSize)
+        self._popout.selected_index = 0
+        # Add scroll
+        jav = """
+        $('div.wkspTable').css({position: 'absolute', display:"table-cell", 'max-height':"86%",
+        'overflow': 'auto', 'height':"86%", 'width': "100%"})
+        """
+        display(Javascript(jav))
 
     def _htmlTable(self, vName, vType, v, vSize):
-        """"""
+        """Creation of the html table for the workspace"""
+        cellLayout = """
+        <div style='font-weight:bold; text-align:center'>{0}</div></td>""" + \
+            """<td><div style='text-align:center'>{1}</div></td>""" + \
+            """<td><div style='text-align:center'>{2}</div></td><td>""" + \
+            """<div style='max-height:80px; text-overflow:ellipsis; table-layout:fixed; overflow:auto'>{3}</div>""" + \
+            """</td>
+        """
+
         self._tablab.value = """
-        <table class="table table-bordered table-striped align="center" style='margin: 0px auto;'">
+        <div id="wkspTable">
+        <table class="table table-bordered table-striped'">
             <tr>
-                <th>Name</th>
-                <th>Type</th>
+                <th><div style='text-align:center'>Name</div></th>
+                <th><div style='text-align:center'>Type</div></th>
+                <th><div style='min-width:40px; text-align:center'>Size</div></th>
                 <th>Value</th>
-                <th>Size</th>
             </tr>
             <tr>
                 <td>""" + \
-                '</td></tr><tr><td>'.join(["<div style='font-weight:bold'>{0}</div></td><td>{1}</td><td><div style='display: block; max-height:40px; overflow:auto; table-layout: fixed; text-overflow: ellipsis'>{2}</div></td><td>{3}</td>".format(vName[k], vType[k], str(val), vSize[k]) for k, val in enumerate(v)]) + \
+                '</td></tr><tr><td>'.join([cellLayout.format(vName[k], vType[k], vSize[k], str(val)) for k, val in enumerate(v)]) + \
                 """</td>
             </tr>
-        </table>"""
+        </table>
+        </div>"""
 
     # /////////////// SETTINGS \\\\\\\\\\\\\\\\\
     # -> Sorting :
     def _FiltVar(self):
         """Filt, sort variables"""
-        self._popout.selected_index = 0
         vName, vType, vSize = self._varnames, self._vartypes, self._varsizes
         # Get type :
         typ = self._wFlt_type.get_state()['selected_label']
@@ -480,10 +585,10 @@ class workspace(_createWindow):
             # Get variables :
             var = self._wLS_var.value
             if var == '':  # Save all variables
-                varname = self._getVarName()
+                vName, _, _ = self._FiltVar()
             else:          # Save defined variables
-                varname = var.replace(' ', '').split(sep=',')
-            data = {name: self._namespace.shell.user_ns[name] for name in varname}
+                vName = var.replace(' ', '').split(sep=',')
+            data = {name: self._namespace.shell.user_ns[name] for name in vName}
             # Save :
             with open(savefile, 'wb') as f:
                 pickle.dump(data, f)
@@ -497,10 +602,11 @@ class workspace(_createWindow):
             # Add variables to workspace :
             for k in data.keys():
                 self._namespace.shell.user_ns[k] = data[k]
-            self._fill()
             # Confirmation text :
             self._wLS_txt.value = savefile+' loaded :D'
             self._wLS_txt.visible = True
+            sleep(2)
+            self._fill()
         sleep(3)
         self._wLS_txt.visible = False
 
@@ -613,17 +719,3 @@ class workspace(_createWindow):
         self._varnames = self._getVarName()                 # Get name
         self._vartypes = self._getVarTypes(self._varnames)  # Get types
         self._varsizes = self._getVarSizes(self._varnames)  # Get sizes
-
-    @staticmethod
-    def _createTab(var, label):
-        """Create each tab of the table"""
-        var = wdg.Box()
-        var.background_color = '#fff'
-        var.border_color = '#ccc'
-        var.border_width = 1
-        var.border_radius = 5
-        # var.overflow = 'hidden'
-        # var.height = 700
-        label = wdg.HTML(value='Not hooked')
-        var.children = [label]
-        return var, label
