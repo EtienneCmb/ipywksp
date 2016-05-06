@@ -12,6 +12,10 @@ Add a workspace to the IPython notebook. Implemented features :
 - Javascript integration to have a detached workspace
 - Plot variables and save the figure
 
+## Example of use:
+>>> from ipywksp import workspace
+>>> workspace(theme="dark", autoHide=True)
+
 ## Screenshots
 Default theme :
 ![alt tag](https://github.com/EtienneCmb/ipywksp/blob/develop/screenshots/theme_light.png)

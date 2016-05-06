@@ -408,15 +408,18 @@ class _createWindow(object):
 
 class workspace(_createWindow):
 
-    """Print the workspace of an Ipython notebook.
+    """Workspace for Jupyter
 
-    # Define a workspace :
-    from wksp import workspace
-    wk = workspace()    # define workspace
-    wk.display()        # display workspace
+    Kargs:
+        theme: string, optional, [def: 'light']
+            Use either 'light' or 'dark' to change the theme of the workspace
 
-    # Finally, close the workspace :
-    wk.close()          # close workspace
+        autoHide : bool, optional, [def: False]
+            Automatically hide the workspace when mouse is out
+
+    Example:
+        >>> from ipywksp import workspace
+        >>> workspace(theme="dark", autoHide=True)
     """
 
     def __init__(self, theme="light", autoHide=False):
