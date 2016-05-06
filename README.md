@@ -13,8 +13,12 @@ Add a workspace to the IPython notebook. Implemented features :
 - Plot variables and save the figure
 
 ## Example of use:
->>> from ipywksp import workspace
->>> workspace(theme="dark", autoHide=True)
+```
+# Create a dark workspace with auto-hide behavior
+from ipywksp import workspace
+workspace(theme="dark", autoHide=True)
+```
+
 
 ## Screenshots
 Default theme :
