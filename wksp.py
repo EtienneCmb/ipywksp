@@ -63,7 +63,7 @@ class _createWindow(object):
     def __init__(self, children=[], title=[''], kind='tab', resizable=True,
                  xscroll=False, yscroll=False, win='_cwt', clo='_cwc',
                  red='_cwr', enl='_cwe', tab='_cwa', fit='_cwf', place='left',
-                 tab_kwargs={}, win_kwargs={}, but_kwargs={}):
+                 tab_kwargs={}, win_kwargs={}, but_kwargs={}, autoHide=False):
         # Get variables :
         m = 5
         dS = '<div id="{0}" type="button" class="close">{1}</div>'
@@ -74,6 +74,7 @@ class _createWindow(object):
         self._enlN = enl
         self._fitN = fit
         self._place = place
+        self._atohd = autoHide
 
         # Define scrolling :
         if xscroll:
@@ -93,7 +94,7 @@ class _createWindow(object):
             self._scrollStr = ''
 
         # Resizable :
-        if resizable:
+        if resizable and not autoHide:
             self._resizable = '.resizable()'
         else:
             self._resizable = ''
@@ -127,6 +128,60 @@ class _createWindow(object):
                     children=[self._toolbar, self._tab], _dom_classes=[win],
                     visible=False, **win_kwargs, border_radius=5)
         self._display()
+
+        # Auto-hide :
+        if self._atohd:
+            atohde = """
+            // First hide :
+            $(".{tab}").hide("drop", 100);
+            $(".{window}")
+                .css({{'overflow-y':'', 'overflow-x':''}})
+                .animate({{
+                'min-width': "1%",
+                'width': "5%",
+                'height': "1%",
+                'opacity': 0.1,
+             }}, 100, "easeOutCubic", function() {{
+              //Animation complete.
+             }});
+
+            // Get height/width :
+            var wBef = $(".{window}").width();
+            var hBef = $(".{window}").height();
+
+            $(".{window}")
+                .mouseenter(function() {{
+                $(".{tab}").show('').fadeIn(100);
+                $(".{window}")
+                    {scroll}
+                    .animate({{
+                    'height': hBef,
+                    'width': wBef,
+                    'opacity': 1,
+                    }}, 100, "easeOutExpo", function() {{
+                    //Animation complete.
+                    }}){resize};
+            }})
+                .mouseleave(function() {{
+                // Update variables :
+                wBef = $(".{window}").width();
+                hBef = $(".{window}").height();
+                $(".{tab}").hide("drop", 100);
+                $(".{window}")
+                    .css({{'overflow-y':'', 'overflow-x':''}})
+                    .animate({{
+                    'min-width': "1%",
+                    'width': "5%",
+                    'height': "1%",
+                    'opacity': 0.1,
+                 }}, 100, "easeOutCubic", function() {{
+                  //Animation complete.
+                 }}).resizable("destroy");
+            }});
+            """
+            display(Javascript(
+                atohde.format(window=self._winN, tab=self._tabN,
+                              resize=self._resizable, scroll=self._scrollStr)))
 
     def _ipython_display_(self):
         """Display the ipython widgets"""
@@ -364,7 +419,7 @@ class workspace(_createWindow):
     wk.close()          # close workspace
     """
 
-    def __init__(self, theme="light"):
+    def __init__(self, theme="light", autoHide=False):
         """Public constructor."""
 
         if theme == "light":
@@ -489,7 +544,7 @@ class workspace(_createWindow):
             self, children=[_tab, _subAccSt, _subAccVi], **javaWin,
             title=['Workspace', 'Settings', 'Visualization'], xscroll=False,
             yscroll=False, win_kwargs=wkth, tab_kwargs=wkth, but_kwargs=butbck,
-            place='left')
+            place='left', autoHide=autoHide)
         self._popout = self._tab
         self._fill()
 
