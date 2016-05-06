@@ -20,44 +20,43 @@ class _createWindow(object):
 
     """Class to create a window.
 
-    Parameters
-    ----------
-    children : list, [def : []]
-        List of HTML widgets
+    Kargs:
+        children: list, [def: []]
+            List of HTML widgets
 
-    title : list, [def : []]
-        List of strings for the title of each tab
+        title: list, [def: []]
+            List of strings for the title of each tab
 
-    kind : string, [def : 'tab]
-        Display window as tab (kind='tab) or accordion (kind='acc)
+        kind: string, [def: 'tab]
+            Display window as tab (kind='tab) or accordion (kind='acc)
 
-    resizale : bool, [def : True]
-        Boolean value to set if the window should be resizable or not
+        resizale: bool, [def: True]
+            Boolean value to set if the window should be resizable or not
 
-    xscroll : bool, [def : False]
-        Boolean value to set if the window should be x-scrollable
+        xscroll: bool, [def: False]
+            Boolean value to set if the window should be x-scrollable
 
-    yscroll : bool, [def : False]
-        Boolean value to set if the window should be y-scrollable
+        yscroll: bool, [def: False]
+            Boolean value to set if the window should be y-scrollable
 
-    win, clo, red, enl, tab, fit : string
-        Name to call it in the javascript (jv). Those parameters can be usefull
-        if there is multiple windows.
-            - win : jv name of the window [def : '_cwt']
-            - tab : jv name of the table [def : '_cwa']
-            - fit : jv name of the fitting button [def : '_cwf']
-            - red : jv name of the reduce button [def : '_cwr']
-            - enl : jv name of the enlarge button [def : '_cwe']
-            - clo : jv name of the close button [def : '_cwc']
+        win, clo, red, enl, tab, fit : string
+            Name to call it in the javascript (jv). Those parameters can be
+            usefull if there is multiple windows.
+                - win: jv name of the window [def: '_cwt']
+                - tab: jv name of the table [def: '_cwa']
+                - fit: jv name of the fitting button [def: '_cwf']
+                - red: jv name of the reduce button [def: '_cwr']
+                - enl: jv name of the enlarge button [def: '_cwe']
+                - clo: jv name of the close button [def: '_cwc']
 
-    tab_kwargs : dict, [def : {}]
-        Any supplementar arguments to pass to the created tab
+        tab_kwargs: dict, [def: {}]
+            Any supplementar arguments to pass to the created tab
 
-    win_kwargs : dict, [def : {}]
-        Any supplementar arguments to pass to the created window
+        win_kwargs: dict, [def: {}]
+            Any supplementar arguments to pass to the created window
 
-    but_kwargs : dict, [def : {}]
-        Any supplementar arguments to pass to buttons
+        but_kwargs: dict, [def: {}]
+            Any supplementar arguments to pass to buttons
     """
 
     def __init__(self, children=[], title=[''], kind='tab', resizable=True,
